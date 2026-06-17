@@ -1,0 +1,78 @@
+{
+    // Editor
+    "editor.fontFamily": "'Fira Code', monospace",
+    "editor.fontSize": 16,
+    "editor.lineHeight": 22,
+    "editor.fontLigatures": false,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.wordWrap": "on",
+    "editor.minimap.enabled": false,
+    "editor.guides.bracketPairs": true,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.renderWhitespace": "boundary",
+    "editor.renderLineHighlight": "all",
+    "editor.cursorBlinking": "smooth",
+    "editor.cursorSmoothCaretAnimation": "on",
+    "editor.smoothScrolling": true,
+    "editor.linkedEditing": true,
+    "editor.inlineSuggest.enabled": true,
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+
+    // Explorer
+    "explorer.confirmDelete": false,
+    "explorer.compactFolders": false,
+
+    // Terminal
+    "terminal.integrated.fontFamily": "monospace",
+    "terminal.integrated.fontSize": 12,
+    "terminal.integrated.lineHeight": 1.1,
+    "terminal.integrated.scrollback": 10000,
+
+    // Git
+    "git.autofetch": true,
+    "git.confirmSync": true,
+
+    // Search
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/dist": true,
+      "**/build": true
+    },
+
+    // TypeScript
+    "typescript.updateImportsOnFileMove.enabled": "always",
+
+    // JavaScript & TypeScript
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascriptreact]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+
+    // Prettier
+    "prettier.singleQuote": true,
+    "prettier.semi": true,
+    "prettier.trailingComma": "all",
+
+    // Tailwind
+    "editor.quickSuggestions": {
+      "strings": true
+    },
+    "tailwindCSS.emmetCompletions": true,
+
+    // Cursor AI
+    "cursor.cpp.enablePartialAccepts": true,
+    "cursor.cmdk.useThemedDiffBackground": true
+  }

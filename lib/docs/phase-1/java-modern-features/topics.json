@@ -1,0 +1,162 @@
+[
+  {
+    "id": "generics",
+    "icon": "🧬",
+    "title": "Generics",
+    "tagline": "Write once, work for any type — safely",
+    "color": "#6366f1",
+    "sections": [
+      {
+        "heading": "What problem does this solve?",
+        "body": "Before generics (Java 1.4 and earlier), you had to use raw types:\n\nList list = new ArrayList();\nlist.add(\"hello\");\nlist.add(42);          // compiles — no error!\nString s = (String) list.get(1);  // 💥 ClassCastException at runtime\n\nThe compiler had no idea what was inside the list. You had to cast manually, and casting could blow up at runtime. Generics move that error to compile time — the safest possible moment."
+      },
+      {
+        "heading": "The basic syntax",
+        "body": "// With generics — the compiler now knows the type\nList<String> names = new ArrayList<>();\nnames.add(\"Alice\");\nnames.add(\"Bob\");\n// names.add(42);   ← compile error — caught immediately!\nString first = names.get(0);   // no cast needed\n\n// The <String> part is called a \"type parameter\" or \"type argument\"\n// The diamond <> on the right infers the type from the left side"
+      },
+      {
+        "heading": "Generic methods — your own reusable utilities",
+        "body": "// Without generics — you'd need a separate method for each type\npublic static String firstString(List<String> list) { return list.get(0); }\npublic static Integer firstInteger(List<Integer> list) { return list.get(0); }\n\n// With generics — one method, any type\npublic static <T> T first(List<T> list) {\n    if (list.isEmpty()) throw new RuntimeException(\"Empty list\");\n    return list.get(0);\n}\n\n// Usage — T is inferred automatically\nString name    = first(List.of(\"Alice\", \"Bob\"));\nInteger number = first(List.of(1, 2, 3));\nDouble price   = first(List.of(9.99, 19.99));\n\n// <T> declared before return type = \"this method has a type parameter T\"\n// The compiler figures out what T is at each call site"
+      },
+      {
+        "heading": "Generic classes — build your own typed containers",
+        "body": "// A pair that holds two values of potentially different types\npublic class Pair<A, B> {\n    private final A first;\n    private final B second;\n\n    public Pair(A first, B second) {\n        this.first = first;\n        this.second = second;\n    }\n\n    public A getFirst()  { return first; }\n    public B getSecond() { return second; }\n\n    @Override\n    public String toString() {\n        return \"(\" + first + \", \" + second + \")\";\n    }\n}\n\n// Usage\nPair<String, Integer> nameAndAge = new Pair<>(\"Alice\", 30);\nPair<String, List<String>> userAndRoles = new Pair<>(\"bob\", List.of(\"ADMIN\", \"USER\"));\n\nSystem.out.println(nameAndAge.getFirst());   // Alice\nSystem.out.println(nameAndAge.getSecond());  // 30\n\n// This is exactly how Map.Entry<K,V> works in the JDK"
+      },
+      {
+        "heading": "Bounded type parameters — constrain what T can be",
+        "body": "// <T extends Number> means T must be Number or any subclass of it\n// (Integer, Double, Long, BigDecimal all qualify)\npublic static <T extends Number> double sum(List<T> numbers) {\n    double total = 0;\n    for (T n : numbers) {\n        total += n.doubleValue();   // safe because T extends Number\n    }\n    return total;\n}\n\nsum(List.of(1, 2, 3));            // 6.0  (T = Integer)\nsum(List.of(1.5, 2.5, 3.0));      // 7.0  (T = Double)\n// sum(List.of(\"a\", \"b\"));        // ❌ compile error — String doesn't extend Number\n\n// Multiple bounds\npublic static <T extends Comparable<T> & Cloneable> T max(T a, T b) {\n    return a.compareTo(b) >= 0 ? a : b;\n}"
+      },
+      {
+        "heading": "Wildcards: ? — when the exact type doesn't matter",
+        "body": "// Upper bounded wildcard: ? extends Type\n// \"I will READ from this list, but I won't add to it\"\npublic static double sumAll(List<? extends Number> numbers) {\n    return numbers.stream().mapToDouble(Number::doubleValue).sum();\n}\nsumAll(List.of(1, 2, 3));          // works with List<Integer>\nsumAll(List.of(1.5, 2.5));        // works with List<Double>\nsumAll(List.of(1L, 2L));          // works with List<Long>\n\n// Lower bounded wildcard: ? super Type\n// \"I will WRITE to this list (add Integer or its supertypes)\"\npublic static void addNumbers(List<? super Integer> list) {\n    list.add(1);\n    list.add(2);\n    list.add(3);\n}\n\n// Unbounded wildcard: ?\n// \"I only care that it's a List — I won't touch the elements\"\npublic static void printSize(List<?> list) {\n    System.out.println(\"Size: \" + list.size());\n}\n\n// PECS rule — Producer Extends, Consumer Super\n// If a list PRODUCES (gives you) values → ? extends T\n// If a list CONSUMES (receives) values  → ? super T"
+      },
+      {
+        "heading": "Raw types — the thing you must NEVER do",
+        "body": "// ❌ Raw type — avoid completely in modern Java\nList raw = new ArrayList();\nraw.add(\"string\");\nraw.add(99);\nString s = (String) raw.get(1);  // ClassCastException at runtime!\n\n// ❌ Also bad — mixing raw and generic\nList rawList = new ArrayList<String>();  // still a raw type\nList<String> typed = new ArrayList();   // unchecked warning\n\n// ✅ Always parameterize\nList<String> names = new ArrayList<>();\nMap<String, List<Integer>> grouped = new HashMap<>();\n\n// If you truly don't know the type at compile time, use wildcards:\nList<?> unknown = getListFromSomewhere();\n// You can read Object from it, but can't add to it"
+      },
+      {
+        "heading": "Spring Boot uses generics everywhere — practical examples",
+        "body": "// Repository — T is your entity, ID is its primary key type\npublic interface UserRepository extends JpaRepository<User, Long> {\n    List<User> findByEmail(String email);\n    Optional<User> findByUsername(String username);\n}\n\n// ResponseEntity<T> — the T tells you what's in the response body\n@GetMapping(\"/users/{id}\")\npublic ResponseEntity<UserDTO> getUser(@PathVariable Long id) {\n    return userService.findById(id)\n        .map(ResponseEntity::ok)\n        .orElse(ResponseEntity.notFound().build());\n}\n\n// Service layer — generic result wrapper\npublic class ApiResponse<T> {\n    private T data;\n    private String message;\n    private int status;\n    // ...\n}\n\n@GetMapping(\"/products\")\npublic ResponseEntity<ApiResponse<List<ProductDTO>>> getProducts() {\n    List<ProductDTO> products = productService.findAll();\n    return ResponseEntity.ok(new ApiResponse<>(products, \"OK\", 200));\n}"
+      }
+    ]
+  },
+  {
+    "id": "lambdas",
+    "icon": "⚡",
+    "title": "Lambdas",
+    "tagline": "Functions as values — pass behaviour, not just data",
+    "color": "#0ea5e9",
+    "sections": [
+      {
+        "heading": "What problem does this solve?",
+        "body": "Before lambdas (Java 7 and earlier), passing behaviour required anonymous classes — verbose boilerplate for simple logic:\n\n// Old way — anonymous class just to sort\nCollections.sort(users, new Comparator<User>() {\n    @Override\n    public int compare(User a, User b) {\n        return a.getName().compareTo(b.getName());\n    }\n});\n\n// Lambda way — same logic, one line\nusers.sort((a, b) -> a.getName().compareTo(b.getName()));\n\n// Even better with method reference\nusers.sort(Comparator.comparing(User::getName));\n\nLambdas let you treat FUNCTIONS as values — pass them around, return them, store them in variables. This unlocks a whole functional programming style."
+      },
+      {
+        "heading": "Lambda syntax — 4 forms",
+        "body": "// Form 1: multiple parameters, multiple statements — explicit braces and return\n(String a, String b) -> {\n    String combined = a + \" \" + b;\n    return combined.toUpperCase();\n}\n\n// Form 2: multiple parameters, single expression — no braces, no return keyword\n(a, b) -> a + b\n\n// Form 3: single parameter — parentheses optional\nname -> name.toUpperCase()\n(name) -> name.toUpperCase()   // same thing\n\n// Form 4: no parameters\n() -> System.out.println(\"Hello!\")\n() -> 42\n\n// The left side of -> is parameters\n// The right side is the body (expression or block)\n// Types are usually inferred — you rarely need to write them"
+      },
+      {
+        "heading": "Functional interfaces — what lambdas implement",
+        "body": "// A lambda must implement a @FunctionalInterface\n// (an interface with exactly ONE abstract method)\n\n// The 4 most important built-in ones:\n\n// 1. Function<T, R> — takes T, returns R\nFunction<String, Integer> strLen = s -> s.length();\nInteger len = strLen.apply(\"hello\");   // 5\n\n// 2. Predicate<T> — takes T, returns boolean\nPredicate<String> isLong = s -> s.length() > 5;\nboolean result = isLong.test(\"hello\");        // false\nboolean result2 = isLong.test(\"hello world\"); // true\n\n// 3. Consumer<T> — takes T, returns nothing (side effects)\nConsumer<String> printer = s -> System.out.println(\">> \" + s);\nprinter.accept(\"hello\");   // prints: >> hello\n\n// 4. Supplier<T> — takes nothing, returns T\nSupplier<String> greeting = () -> \"Hello, World!\";\nString msg = greeting.get();   // \"Hello, World!\"\n\n// Compose predicates\nPredicate<String> isLong2    = s -> s.length() > 5;\nPredicate<String> startsWithH = s -> s.startsWith(\"H\");\nPredicate<String> both = isLong2.and(startsWithH);\nboth.test(\"Hello World\");   // true\nboth.test(\"Hi\");            // false — too short"
+      },
+      {
+        "heading": "Method references — lambdas with no body",
+        "body": "// When your lambda just calls an existing method, use :: instead\n// 4 kinds of method references:\n\n// 1. Static method reference: ClassName::methodName\nFunction<String, Integer> parseInt = Integer::parseInt;\nparseInt.apply(\"42\");   // 42\n\n// 2. Instance method of specific object: object::methodName\nString prefix = \"Hello, \";\nFunction<String, String> greet = prefix::concat;\ngreet.apply(\"Alice\");   // \"Hello, Alice\"\n\n// 3. Instance method of arbitrary object of type: ClassName::methodName\nFunction<String, String> upper = String::toUpperCase;\nupper.apply(\"hello\");   // \"HELLO\"\n\n// 4. Constructor reference: ClassName::new\nSupplier<ArrayList<String>>  newList = ArrayList::new;\nArrayList<String> list = newList.get();\n\n// In practice:\nList<String> names = List.of(\"alice\", \"bob\", \"charlie\");\n\n// Lambda version\nnames.stream()\n     .map(s -> s.toUpperCase())\n     .forEach(s -> System.out.println(s));\n\n// Method reference version — cleaner\nnames.stream()\n     .map(String::toUpperCase)\n     .forEach(System.out::println);"
+      },
+      {
+        "heading": "Closures — lambdas capturing variables",
+        "body": "// Lambdas can capture variables from the surrounding scope\n// BUT those variables must be effectively final (not reassigned after capture)\n\nString greeting = \"Hello\";   // effectively final\nRunnable r = () -> System.out.println(greeting + \" World\");\nr.run();   // Hello World\n\n// greeting = \"Hi\";   // ← would cause compile error if you added this\n\n// ❌ This won't compile\nint count = 0;\nRunnable bad = () -> {\n    count++;   // compile error — count is not effectively final\n};\n\n// ✅ Use an array or AtomicInteger when you need mutation\nint[] count2 = {0};\nRunnable ok = () -> count2[0]++;\n\n// In practice — capturing a service or config value is common\nString apiUrl = config.getApiUrl();   // effectively final\nCompletableFuture.runAsync(() -> callApi(apiUrl));"
+      },
+      {
+        "heading": "Chaining functions — compose and andThen",
+        "body": "// andThen: apply this function, then apply the next\nFunction<Integer, Integer> times2  = x -> x * 2;\nFunction<Integer, Integer> plus10  = x -> x + 10;\n\nFunction<Integer, Integer> times2ThenPlus10 = times2.andThen(plus10);\ntimes2ThenPlus10.apply(5);   // (5*2) + 10 = 20\n\n// compose: apply the other function first, then this one\nFunction<Integer, Integer> plus10ThenTimes2 = times2.compose(plus10);\nplus10ThenTimes2.apply(5);   // (5+10) * 2 = 30\n\n// BiFunction — takes two parameters\nBiFunction<String, String, String> fullName =\n    (first, last) -> first + \" \" + last;\nfullName.apply(\"Alice\", \"Smith\");   // \"Alice Smith\"\n\n// UnaryOperator<T> — Function<T,T> (same in, same out)\nUnaryOperator<String> trim = String::trim;\nUnaryOperator<String> upper = String::toUpperCase;\nUnaryOperator<String> trimAndUpper = trim.andThen(upper);\ntrimAndUpper.apply(\"  hello world  \");   // \"HELLO WORLD\""
+      },
+      {
+        "heading": "Spring Boot uses lambdas constantly — practical examples",
+        "body": "// Security config\nhttp.authorizeHttpRequests(auth -> auth\n    .requestMatchers(\"/public/**\").permitAll()\n    .anyRequest().authenticated()\n);\n\n// Spring Data — query with specification\nSpecification<User> spec = (root, query, cb) ->\n    cb.equal(root.get(\"active\"), true);\nuserRepository.findAll(spec);\n\n// CompletableFuture — async processing\nCompletableFuture<String>\n    .supplyAsync(() -> fetchUserFromDb(userId))\n    .thenApply(user -> enrichWithProfile(user))\n    .thenApply(user -> toDTO(user))\n    .exceptionally(ex -> UserDTO.empty());\n\n// RestTemplate / WebClient\nwebClient.get()\n    .uri(\"/api/users/{id}\", userId)\n    .retrieve()\n    .bodyToMono(UserDTO.class)\n    .doOnNext(user -> log.info(\"Fetched: {}\", user.getName()))\n    .block();"
+      }
+    ]
+  },
+  {
+    "id": "streams",
+    "icon": "🌊",
+    "title": "Streams",
+    "tagline": "Pipeline-based data processing — no more for-loops",
+    "color": "#10b981",
+    "sections": [
+      {
+        "heading": "What problem does this solve?",
+        "body": "Processing collections used to mean writing loops — verbose, bug-prone, hard to read:\n\n// Old way: filter active users, get names, sort, deduplicate\nList<String> result = new ArrayList<>();\nfor (User user : users) {\n    if (user.isActive()) {\n        result.add(user.getName());\n    }\n}\nCollections.sort(result);\n// Can't easily deduplicate without a Set...\n\n// Stream way — reads exactly like the requirement\nList<String> result = users.stream()\n    .filter(User::isActive)\n    .map(User::getName)\n    .sorted()\n    .distinct()\n    .collect(Collectors.toList());\n\nStreams are LAZY — no work happens until a terminal operation is called.\nThey don't modify the original collection — they produce a new result."
+      },
+      {
+        "heading": "Stream pipeline — 3 stages",
+        "body": "// Every stream has exactly this shape:\n// SOURCE → INTERMEDIATE OPERATIONS (lazy) → TERMINAL OPERATION (triggers execution)\n\nList<Integer> numbers = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);\n\nint result = numbers.stream()              // 1. SOURCE — creates a stream\n    .filter(n -> n % 2 == 0)              // 2. INTERMEDIATE — keeps evens: 2,4,6,8,10\n    .map(n -> n * n)                      // 2. INTERMEDIATE — squares them: 4,16,36,64,100\n    .reduce(0, Integer::sum);             // 3. TERMINAL — sums: 220\n\n// Intermediate operations return a Stream<T> — they are LAZY (nothing runs yet)\n// Terminal operations trigger execution and return a non-Stream result\n\n// Key insight: filter+map+reduce above makes ONE PASS through the data\n// Not three separate passes like three separate for-loops would"
+      },
+      {
+        "heading": "filter — keep elements that match a condition",
+        "body": "List<User> users = getUsers();   // assume we have a list\n\n// Keep only active users\nList<User> activeUsers = users.stream()\n    .filter(user -> user.isActive())\n    .collect(Collectors.toList());\n\n// Chaining filters (AND logic)\nList<User> seniorAdmins = users.stream()\n    .filter(User::isActive)\n    .filter(user -> user.getRole().equals(\"ADMIN\"))\n    .filter(user -> user.getAge() >= 30)\n    .collect(Collectors.toList());\n\n// OR logic — use Predicate.or()\nPredicate<User> isAdmin   = user -> user.getRole().equals(\"ADMIN\");\nPredicate<User> isModerator = user -> user.getRole().equals(\"MODERATOR\");\n\nList<User> staffUsers = users.stream()\n    .filter(isAdmin.or(isModerator))\n    .collect(Collectors.toList());\n\n// negate()\nList<User> nonAdmins = users.stream()\n    .filter(isAdmin.negate())\n    .collect(Collectors.toList());"
+      },
+      {
+        "heading": "map — transform each element",
+        "body": "// map: transforms T → R (one-to-one)\nList<User> users = getUsers();\n\n// User → String (extract names)\nList<String> names = users.stream()\n    .map(User::getName)\n    .collect(Collectors.toList());\n\n// User → UserDTO (convert to DTO — extremely common in Spring Boot)\nList<UserDTO> dtos = users.stream()\n    .map(user -> new UserDTO(user.getId(), user.getName(), user.getEmail()))\n    .collect(Collectors.toList());\n\n// Chained maps\nList<String> upperEmails = users.stream()\n    .map(User::getEmail)\n    .map(String::toLowerCase)\n    .map(String::trim)\n    .collect(Collectors.toList());\n\n// mapToInt, mapToDouble, mapToLong — for primitives (avoids boxing)\nint totalAge = users.stream()\n    .mapToInt(User::getAge)\n    .sum();   // sum, average, min, max, count available\n\ndouble avgAge = users.stream()\n    .mapToInt(User::getAge)\n    .average()\n    .orElse(0.0);"
+      },
+      {
+        "heading": "flatMap — flatten nested collections",
+        "body": "// flatMap: transforms T → Stream<R>, then flattens all those streams into one\n// Use when each element contains a collection\n\n// Each user has a list of roles\nList<User> users = getUsers();\n\n// ❌ map gives you Stream<List<String>>\nStream<List<String>> nested = users.stream()\n    .map(User::getRoles);\n\n// ✅ flatMap gives you Stream<String> — one flat stream of all roles\nList<String> allRoles = users.stream()\n    .flatMap(user -> user.getRoles().stream())\n    .distinct()\n    .sorted()\n    .collect(Collectors.toList());\n\n// More concrete: each order has line items\nList<Order> orders = getOrders();\nList<Product> allProducts = orders.stream()\n    .flatMap(order -> order.getLineItems().stream())\n    .map(LineItem::getProduct)\n    .distinct()\n    .collect(Collectors.toList());\n\n// String splitting — each string becomes a stream of words\nList<String> sentences = List.of(\"Hello World\", \"Java Streams\", \"are great\");\nList<String> words = sentences.stream()\n    .flatMap(sentence -> Arrays.stream(sentence.split(\" \")))\n    .collect(Collectors.toList());\n// [\"Hello\", \"World\", \"Java\", \"Streams\", \"are\", \"great\"]"
+      },
+      {
+        "heading": "Terminal operations — how streams finish",
+        "body": "// collect — most common — gathers elements into a container\nList<String> list   = stream.collect(Collectors.toList());\nSet<String>  set    = stream.collect(Collectors.toSet());\nString joined       = stream.collect(Collectors.joining(\", \"));\nString joined2      = stream.collect(Collectors.joining(\", \", \"[\", \"]\"));\n\n// count\nlong count = users.stream().filter(User::isActive).count();\n\n// findFirst, findAny — return Optional<T>\nOptional<User> admin = users.stream()\n    .filter(u -> u.getRole().equals(\"ADMIN\"))\n    .findFirst();\n\n// anyMatch, allMatch, noneMatch — return boolean\nboolean hasAdmin    = users.stream().anyMatch(u -> u.getRole().equals(\"ADMIN\"));\nboolean allActive   = users.stream().allMatch(User::isActive);\nboolean noChildren  = users.stream().noneMatch(u -> u.getAge() < 18);\n\n// min, max\nOptional<User> youngest = users.stream()\n    .min(Comparator.comparing(User::getAge));\n\n// reduce — fold into a single value\nint totalScore = scores.stream()\n    .reduce(0, Integer::sum);\n\n// forEach — terminal, for side effects only\nusers.stream()\n    .filter(User::isActive)\n    .forEach(user -> emailService.send(user.getEmail()));"
+      },
+      {
+        "heading": "Collectors.groupingBy — the most powerful collector",
+        "body": "// groupingBy creates a Map<K, List<V>>\nList<User> users = getUsers();\n\n// Group users by role\nMap<String, List<User>> byRole = users.stream()\n    .collect(Collectors.groupingBy(User::getRole));\n// { \"ADMIN\": [user1, user3], \"USER\": [user2, user4, user5] }\n\n// Group by role, count per role\nMap<String, Long> countByRole = users.stream()\n    .collect(Collectors.groupingBy(User::getRole, Collectors.counting()));\n// { \"ADMIN\": 2, \"USER\": 3 }\n\n// Group by role, collect names (downstream collector)\nMap<String, List<String>> namesByRole = users.stream()\n    .collect(Collectors.groupingBy(\n        User::getRole,\n        Collectors.mapping(User::getName, Collectors.toList())\n    ));\n// { \"ADMIN\": [\"Alice\", \"Charlie\"], \"USER\": [\"Bob\", \"Diana\", \"Eve\"] }\n\n// partitioningBy — special case: splits into true/false\nMap<Boolean, List<User>> activeVsInactive = users.stream()\n    .collect(Collectors.partitioningBy(User::isActive));\nList<User> active   = activeVsInactive.get(true);\nList<User> inactive = activeVsInactive.get(false);\n\n// Group and average\nMap<String, Double> avgAgeByRole = users.stream()\n    .collect(Collectors.groupingBy(\n        User::getRole,\n        Collectors.averagingInt(User::getAge)\n    ));"
+      },
+      {
+        "heading": "Lazy evaluation — streams only do work they must",
+        "body": "// Streams are LAZY — intermediate operations do nothing until a terminal runs\n// And they stop as early as possible\n\nList<Integer> numbers = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);\n\n// This doesn't iterate all 10 elements — it stops at 4\nOptional<Integer> first = numbers.stream()\n    .filter(n -> {\n        System.out.println(\"filtering: \" + n);\n        return n % 2 == 0;\n    })\n    .findFirst();\n// Prints: filtering: 1, filtering: 2 — then stops!\n\n// findFirst, findAny, anyMatch, limit all benefit from laziness\n\n// limit — take only N elements (then stop)\nList<Integer> first5Evens = numbers.stream()\n    .filter(n -> n % 2 == 0)\n    .limit(5)\n    .collect(Collectors.toList());   // [2, 4, 6, 8, 10]\n\n// takeWhile (Java 9+) — take while condition is true\nList<Integer> smallNumbers = numbers.stream()\n    .takeWhile(n -> n < 5)\n    .collect(Collectors.toList());   // [1, 2, 3, 4]\n\n// dropWhile (Java 9+) — skip while condition is true\nList<Integer> bigNumbers = numbers.stream()\n    .dropWhile(n -> n < 5)\n    .collect(Collectors.toList());   // [5, 6, 7, 8, 9, 10]"
+      },
+      {
+        "heading": "Real Spring Boot examples",
+        "body": "// Service layer — convert entity list to DTOs\npublic List<UserDTO> getAllActiveUsers() {\n    return userRepository.findAll().stream()\n        .filter(User::isActive)\n        .map(userMapper::toDTO)\n        .sorted(Comparator.comparing(UserDTO::getName))\n        .collect(Collectors.toList());\n}\n\n// Aggregate report by department\npublic Map<String, DeptStats> getDeptStats() {\n    return employeeRepository.findAll().stream()\n        .collect(Collectors.groupingBy(\n            Employee::getDepartment,\n            Collectors.collectingAndThen(\n                Collectors.toList(),\n                employees -> new DeptStats(\n                    employees.size(),\n                    employees.stream().mapToDouble(Employee::getSalary).average().orElse(0)\n                )\n            )\n        ));\n}\n\n// Validate a batch request\npublic List<String> validateItems(List<OrderItemRequest> items) {\n    return items.stream()\n        .filter(item -> item.getQuantity() <= 0)\n        .map(item -> \"Item \" + item.getProductId() + \" has invalid quantity\")\n        .collect(Collectors.toList());\n}"
+      }
+    ]
+  },
+  {
+    "id": "optional",
+    "icon": "🔮",
+    "title": "Optional",
+    "tagline": "Null-safe programming — kill NullPointerException for good",
+    "color": "#f59e0b",
+    "sections": [
+      {
+        "heading": "The billion-dollar mistake",
+        "body": "Tony Hoare, who invented null references, called it \"my billion-dollar mistake.\"\n\n// The old null problem\npublic User findUser(Long id) {\n    return database.get(id);   // might return null!\n}\n\nUser user = findUser(42L);\nSystem.out.println(user.getName());   // 💥 NullPointerException if not found!\n\n// Defensive coding becomes hell\nif (user != null) {\n    if (user.getAddress() != null) {\n        if (user.getAddress().getCity() != null) {\n            System.out.println(user.getAddress().getCity());\n        }\n    }\n}\n\nOptional<T> is a container that either:\n  - Contains a value (Optional.of(value))\n  - Is empty (Optional.empty())\n\nIt forces you to explicitly handle the \"not found\" case — no silent null surprises."
+      },
+      {
+        "heading": "Creating Optional",
+        "body": "// Optional.of — use when you KNOW the value is non-null\nOptional<String> name = Optional.of(\"Alice\");\n// Optional.of(null) → throws NullPointerException immediately\n\n// Optional.ofNullable — use when the value MIGHT be null\nString maybeNull = database.getValue(\"key\");   // could be null\nOptional<String> safe = Optional.ofNullable(maybeNull);\n\n// Optional.empty — explicitly no value\nOptional<User> notFound = Optional.empty();\n\n// Check what's inside\noptional.isPresent();    // true if has value\noptional.isEmpty();      // true if no value (Java 11+)\n\n// Get the value (use sparingly — prefer the functional methods below)\noptional.get();          // throws NoSuchElementException if empty!\noptional.orElse(\"default\");      // return value or default\noptional.orElseGet(() -> computeDefault());  // lazy default\noptional.orElseThrow(() -> new UserNotFoundException(\"Not found\"));"
+      },
+      {
+        "heading": "map and flatMap on Optional",
+        "body": "// Optional.map — transform the value if present\nOptional<User> userOpt = userRepository.findById(42L);\n\n// Extract the name (or empty if user not found)\nOptional<String> nameOpt = userOpt.map(User::getName);\n\n// Chain transformations\nOptional<String> upperEmail = userOpt\n    .map(User::getEmail)\n    .map(String::toLowerCase)\n    .map(String::trim);\n\nString email = upperEmail.orElse(\"no-email@example.com\");\n\n// flatMap — when your mapping function returns Optional\n// (avoids Optional<Optional<T>>)\npublic Optional<Address> findAddress(Long userId) {\n    return userRepository.findById(userId)     // Optional<User>\n        .flatMap(user -> addressRepository.findByUserId(user.getId()));\n        // without flatMap: Optional<Optional<Address>> — wrong!\n        // with flatMap:    Optional<Address> — correct!\n}\n\n// Longer chain — the happy path reads linearly\nOptional<String> cityName = userRepository.findById(userId)\n    .flatMap(user -> addressRepository.findByUser(user))\n    .map(Address::getCity)\n    .map(String::toUpperCase);"
+      },
+      {
+        "heading": "filter on Optional — conditional presence",
+        "body": "// filter: keeps the value only if it matches the predicate\nOptional<User> adminUser = userRepository.findById(userId)\n    .filter(user -> user.getRole().equals(\"ADMIN\"));\n// If user is found but not an ADMIN → Optional.empty()\n// If user is found and is ADMIN → Optional.of(user)\n// If user not found → Optional.empty()\n\n// Practical: find active premium user\nOptional<User> eligibleUser = userRepository.findById(userId)\n    .filter(User::isActive)\n    .filter(User::isPremium)\n    .filter(user -> user.getCreatedAt().isBefore(LocalDate.now().minusDays(30)));\n\n// Then handle the result\neligibleUser.ifPresentOrElse(\n    user -> grantAccess(user),\n    () -> denyAccess(\"User not eligible\")\n);"
+      },
+      {
+        "heading": "ifPresent and ifPresentOrElse — replace null checks",
+        "body": "Optional<User> userOpt = userRepository.findById(userId);\n\n// Old way with null\nif (user != null) {\n    emailService.send(user.getEmail());\n}\n\n// Optional.ifPresent — run action only if value exists\nuserOpt.ifPresent(user -> emailService.send(user.getEmail()));\n\n// ifPresentOrElse (Java 9+) — handle both cases\nuserOpt.ifPresentOrElse(\n    user -> emailService.send(user.getEmail()),\n    () -> log.warn(\"User not found, skipping email\")\n);\n\n// or (Java 9+) — provide alternative Optional if empty\nOptional<User> fromCacheOrDb = cacheRepository.findById(userId)\n    .or(() -> databaseRepository.findById(userId));\n\n// Stream integration (Java 9+) — convert Optional to Stream\nList<User> users = List.of(1L, 2L, 3L, 999L).stream()\n    .map(userRepository::findById)   // Stream<Optional<User>>\n    .flatMap(Optional::stream)       // Stream<User> — skips empty Optionals\n    .collect(Collectors.toList());"
+      },
+      {
+        "heading": "Optional in Spring Boot — the right patterns",
+        "body": "// ✅ Repository methods return Optional by convention\npublic interface UserRepository extends JpaRepository<User, Long> {\n    Optional<User> findByEmail(String email);\n    Optional<User> findByUsernameAndActive(String username, boolean active);\n}\n\n// ✅ Service — propagate Optional, let controller handle\npublic Optional<UserDTO> getUserById(Long id) {\n    return userRepository.findById(id)\n        .map(userMapper::toDTO);\n}\n\n// ✅ Controller — map to HTTP response\n@GetMapping(\"/users/{id}\")\npublic ResponseEntity<UserDTO> getUser(@PathVariable Long id) {\n    return userService.getUserById(id)\n        .map(ResponseEntity::ok)\n        .orElse(ResponseEntity.notFound().build());\n}\n\n// ✅ Throw domain exception\npublic UserDTO getUserOrThrow(Long id) {\n    return userRepository.findById(id)\n        .map(userMapper::toDTO)\n        .orElseThrow(() -> new UserNotFoundException(\"User not found: \" + id));\n}\n\n// ❌ Never return Optional from void methods\n// ❌ Never use Optional as a method parameter\n// ❌ Never use Optional<List<T>> — return empty list instead\n// ❌ Never call .get() without checking — defeats the purpose"
+      },
+      {
+        "heading": "Optional vs exceptions vs null — when to use what",
+        "body": "// Use Optional<T> when:\n// - The absence of a value is a NORMAL, expected outcome\n// - \"Find user by email\" — might not exist, that's fine\n// - Repository findBy methods\n\n// Use Exception when:\n// - Something went WRONG that shouldn't happen\n// - \"Find user by ID from a validated request\" — if not found, it's an error\n// - throw new UserNotFoundException(id)\n\n// Use null when:\n// - Almost never in modern Java\n// - Interoperating with legacy code or libraries\n// - Never in your own new code\n\n// Practical decision tree:\n// Q: Is \"not found\" a normal business case?\n//   YES → return Optional<T>\n//   NO  → throw a domain exception\n\n// Examples:\n// findByEmail(\"alice@example.com\")  → Optional (user might not have registered)\n// findById(id from JWT token)        → throw NotFoundException (JWT has valid ID or it's a bug)\n// getCurrentUser(SecurityContext)    → throw (if they're making a request, they must be logged in)"
+      }
+    ]
+  }
+]

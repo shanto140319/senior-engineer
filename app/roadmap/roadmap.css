@@ -1,0 +1,87 @@
+/* Roadmap-specific styles — dynamic colors via --phase-color / --cat-color / --tip-color */
+
+.roadmap-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: #0a0a0f;
+  color: #e2e8f0;
+}
+
+.roadmap-header-gradient {
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a0a2e 50%, #0a1628 100%);
+}
+
+.roadmap-title-gradient {
+  background: linear-gradient(135deg, #e2e8f0 0%, #a5b4fc 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.roadmap-compounding-gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.1) 0%,
+    rgba(236, 72, 153, 0.08) 100%
+  );
+}
+
+/* Phase-themed — parent must set style={{ "--phase-color": color }} */
+.phase-card--active {
+  border-color: color-mix(in srgb, var(--phase-color) 33%, transparent);
+}
+
+.phase-icon-box {
+  background: color-mix(in srgb, var(--phase-color) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--phase-color) 27%, transparent);
+}
+
+.phase-text {
+  color: var(--phase-color);
+}
+
+.phase-badge {
+  background: color-mix(in srgb, var(--phase-color) 8%, transparent);
+  color: var(--phase-color);
+}
+
+.phase-step-index {
+  background: color-mix(in srgb, var(--phase-color) 13%, transparent);
+  color: var(--phase-color);
+}
+
+.step-card--expanded {
+  border-color: color-mix(in srgb, var(--phase-color) 27%, transparent);
+}
+
+.phase-pill--active {
+  border-color: var(--phase-color);
+  background: color-mix(in srgb, var(--phase-color) 13%, transparent);
+  color: var(--phase-color);
+}
+
+/* Category / tip themed — parent sets --cat-color or --tip-color */
+.cat-themed-badge {
+  background: color-mix(in srgb, var(--cat-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cat-color) 20%, transparent);
+  color: var(--cat-color);
+}
+
+.cat-themed-dot {
+  background: var(--cat-color);
+}
+
+.topic-pill {
+  background: color-mix(in srgb, var(--topic-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--topic-color) 20%, transparent);
+  color: var(--topic-color);
+}
+
+.tip-icon-box {
+  background: color-mix(in srgb, var(--tip-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tip-color) 20%, transparent);
+}
+
+.tip-bullet {
+  background: var(--tip-color);
+}

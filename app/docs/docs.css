@@ -1,0 +1,87 @@
+/* Shared documentation page styles */
+
+.docs-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: #060911;
+  color: #e2e8f0;
+}
+
+.docs-header-gradient {
+  background: linear-gradient(135deg, #0a0e1a 0%, #0f172a 60%, #0a0e1a 100%);
+}
+
+.docs-title-gradient {
+  background: linear-gradient(135deg, #e2e8f0 0%, #a5b4fc 60%, #67e8f9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.docs-topic-title-gradient {
+  background: linear-gradient(90deg, var(--topic-color), #e2e8f0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Topic-themed — set --topic-color on parent */
+.topic-icon-box {
+  background: color-mix(in srgb, var(--topic-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--topic-color) 21%, transparent);
+}
+
+.topic-card {
+  border-color: color-mix(in srgb, var(--topic-color) 21%, transparent);
+}
+
+.topic-card-icon {
+  background: color-mix(in srgb, var(--topic-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--topic-color) 19%, transparent);
+}
+
+.topic-text {
+  color: var(--topic-color);
+}
+
+.topic-pill {
+  background: color-mix(in srgb, var(--topic-color) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--topic-color) 15%, transparent);
+  color: color-mix(in srgb, var(--topic-color) 80%, white);
+}
+
+.topic-nav-btn--active {
+  border-color: var(--topic-color);
+  background: color-mix(in srgb, var(--topic-color) 8%, transparent);
+  color: var(--topic-color);
+}
+
+.ref-card {
+  border-color: color-mix(in srgb, var(--ref-color) 15%, transparent);
+}
+
+.ref-card-title {
+  color: var(--ref-color);
+}
+
+/* Java syntax highlighting */
+.code-comment {
+  color: #64748b;
+  font-style: italic;
+}
+
+.code-string {
+  color: #34d399;
+}
+
+.code-keyword {
+  color: #a5b4fc;
+}
+
+.code-annotation {
+  color: #f472b6;
+}
+
+.code-type {
+  color: #67e8f9;
+}
