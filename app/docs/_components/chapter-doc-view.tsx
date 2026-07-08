@@ -8,6 +8,12 @@ import { DocHeader } from "./doc-header";
 import { QuickReference } from "./quick-reference";
 import { TopicDetail } from "./topic-detail";
 import { TopicGrid } from "./topic-grid";
+import { useRecordLastRead } from "./use-record-last-read";
+
+function initialTopicId(topics: DocTopic[], topicParam: string | null): string | null {
+  if (!topicParam) return null;
+  return topics.some((topic) => topic.id === topicParam) ? topicParam : null;
+}
 
 interface ChapterDocViewProps {
   meta: DocPageMeta;
@@ -31,8 +37,12 @@ export function ChapterDocView({
   const searchParams = useSearchParams();
   const roadmapHref = useMemo(() => getRoadmapReturnHref(searchParams), [searchParams]);
 
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const [activeTopicId, setActiveTopicId] = useState<string | null>(() =>
+    initialTopicId(topics, searchParams.get("topic")),
+  );
   const activeTopic = topics.find((t) => t.id === activeTopicId) ?? null;
+
+  useRecordLastRead(meta, activeTopic);
 
   return (
     <>

@@ -20,7 +20,10 @@ export const phases: RoadmapPhase[] = [
             text: "Understand OOP deeply: SOLID principles, composition over inheritance",
             slug: "oop-solid-composition",
           },
-          "Master checked vs unchecked exceptions and when to use each",
+          {
+            text: "Master checked vs unchecked exceptions and when to use each",
+            slug: "exceptions-checked-unchecked",
+          },
           "Practice: convert 5 frontend array operations (map, filter, reduce) into Java Streams",
         ],
       },

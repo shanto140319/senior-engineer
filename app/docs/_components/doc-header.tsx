@@ -56,11 +56,11 @@ export function DocHeader({
         )}
 
         {activeTopic && (
-          <div className="flex items-center gap-4">
-            <div
-              style={topicColorStyle(activeTopic.color)}
-              className="topic-icon-box flex size-14 items-center justify-center rounded-2xl text-[28px]"
-            >
+          <div
+            style={topicColorStyle(activeTopic.color)}
+            className="flex items-center gap-4"
+          >
+            <div className="topic-icon-box flex size-14 items-center justify-center rounded-2xl text-[28px]">
               {activeTopic.icon}
             </div>
             <div>

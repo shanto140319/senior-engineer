@@ -1,0 +1,242 @@
+[
+  {
+    "id": "hierarchy",
+    "icon": "🌳",
+    "title": "The Exception Hierarchy",
+    "tagline": "Know the family tree before you catch anything",
+    "color": "#6366f1",
+    "sections": [
+      {
+        "heading": "Why the hierarchy matters",
+        "body": "Every exception in Java is an object, and every one of them descends from a single root class: Throwable. Understanding this tree is the difference between catching exceptions by reflex and catching them with intent.\n\nThe compiler treats different branches of this tree very differently. Some it forces you to handle. Others it lets you ignore. If you don't know which branch you're standing on, you can't reason about what the compiler will and won't demand from you."
+      },
+      {
+        "heading": "The tree, from root to leaf",
+        "body": "Throwable                       // the root of everything you can throw or catch\n├── Error                       // serious JVM-level problems — do NOT catch these\n│   ├── OutOfMemoryError\n│   ├── StackOverflowError\n│   └── VirtualMachineError\n└── Exception                   // problems your program can reasonably handle\n    ├── IOException             // CHECKED — compiler forces you to handle it\n    ├── SQLException            // CHECKED\n    ├── ClassNotFoundException  // CHECKED\n    └── RuntimeException        // UNCHECKED — compiler does NOT force handling\n        ├── NullPointerException\n        ├── IllegalArgumentException\n        ├── IllegalStateException\n        ├── IndexOutOfBoundsException\n        └── ArithmeticException"
+      },
+      {
+        "heading": "The three categories that matter",
+        "body": "1. Error — Something went catastrophically wrong inside the JVM itself: out of memory, stack overflow, a corrupted class file. These are not meant to be caught or recovered from. If you see one, your process is usually done.\n\n2. Checked exceptions — Direct subclasses of Exception (but NOT of RuntimeException). The compiler forces you to either catch them or declare them with throws. They represent recoverable conditions outside your control: a missing file, a dropped network connection, a locked database row.\n\n3. Unchecked exceptions — Subclasses of RuntimeException. The compiler does not force you to handle them. They almost always represent programming bugs: dereferencing null, passing an invalid argument, indexing past the end of an array."
+      },
+      {
+        "heading": "The one rule that defines everything",
+        "body": "// This single inheritance check decides whether an exception is checked:\n\n// Is it a RuntimeException (or a subclass)?  →  UNCHECKED\n// Is it an Exception but NOT a RuntimeException?  →  CHECKED\n// Is it an Error?  →  unchecked, but you should never catch it\n\nclass MyCheckedException extends Exception { }         // checked\nclass MyUncheckedException extends RuntimeException { } // unchecked\n\n// The keyword \"Runtime\" in the parent chain is the whole story.\n// Everything else about how the compiler treats your exception\n// flows from this one relationship."
+      },
+      {
+        "heading": "Throwable's useful methods",
+        "body": "try {\n    riskyOperation();\n} catch (Exception e) {\n    e.getMessage();          // the human-readable message you passed in\n    e.getCause();            // the underlying exception, if this one wrapped another\n    e.getStackTrace();       // array of StackTraceElement — where it happened\n    e.printStackTrace();     // dump the trace to stderr (avoid in production)\n\n    // Preserve the original cause when re-throwing — never lose the root:\n    throw new ServiceException(\"Failed to load user\", e);\n}\n\n// getCause() is what lets you chain exceptions without losing the trail.\n// A good stack trace tells the full story: what failed, and what caused that."
+      }
+    ]
+  },
+  {
+    "id": "checked",
+    "icon": "🔒",
+    "title": "Checked Exceptions",
+    "tagline": "The compiler makes you deal with these",
+    "color": "#0ea5e9",
+    "sections": [
+      {
+        "heading": "What makes an exception checked",
+        "body": "A checked exception is any subclass of Exception that is not a subclass of RuntimeException. The compiler enforces a contract: if a method can throw one, that fact must be visible in its signature, and every caller must consciously deal with it.\n\nThe intent is honesty. Checked exceptions represent failures that are outside the caller's control but entirely foreseeable — the file might be gone, the network might blink, the query might time out. Java forces the caller to acknowledge that reality at compile time rather than discover it in production."
+      },
+      {
+        "heading": "The compiler's demand: handle or declare",
+        "body": "// When you call a method that throws a checked exception, you have exactly two choices.\n\n// CHOICE 1 — Handle it here with try/catch\npublic String readConfig() {\n    try {\n        return Files.readString(Path.of(\"config.yml\"));\n    } catch (IOException e) {\n        return \"default-config\";   // recover with a sensible fallback\n    }\n}\n\n// CHOICE 2 — Declare it and let the caller deal with it\npublic String readConfig() throws IOException {\n    return Files.readString(Path.of(\"config.yml\"));\n}\n\n// There is no third option. If you do neither, the code will not compile:\n// \"unreported exception IOException; must be caught or declared to be thrown\""
+      },
+      {
+        "heading": "Common checked exceptions in the JDK",
+        "body": "// IOException — file, stream, and network operations\nFiles.readString(path);\nsocket.getInputStream();\n\n// SQLException — raw JDBC database access\nconnection.prepareStatement(sql).executeQuery();\n\n// ClassNotFoundException — reflection / dynamic class loading\nClass.forName(\"com.example.SomeClass\");\n\n// InterruptedException — a thread was interrupted while waiting\nThread.sleep(1000);\nfuture.get();\n\n// ParseException — parsing dates or numbers with legacy formatters\nnew SimpleDateFormat(\"yyyy-MM-dd\").parse(\"2026-07-08\");"
+      },
+      {
+        "heading": "Declaring throws up the call chain",
+        "body": "// A checked exception can propagate up several layers,\n// as long as each layer declares it.\n\npublic byte[] loadFile(String name) throws IOException {\n    return Files.readAllBytes(Path.of(name));      // origin of the exception\n}\n\npublic String process(String name) throws IOException {\n    byte[] data = loadFile(name);                  // declares, doesn't handle\n    return new String(data);\n}\n\npublic void run() {\n    try {\n        System.out.println(process(\"data.txt\"));   // finally handled here\n    } catch (IOException e) {\n        log.error(\"Could not process file\", e);\n    }\n}\n\n// The exception travels up until someone is in a position to actually recover."
+      },
+      {
+        "heading": "The InterruptedException special case",
+        "body": "// InterruptedException is checked and deserves special respect.\n// Swallowing it silently is a classic senior-level red flag.\n\n// ❌ WRONG — you've thrown away the interruption signal\ntry {\n    Thread.sleep(1000);\n} catch (InterruptedException e) {\n    // ignored — the thread no longer knows it was asked to stop\n}\n\n// ✅ RIGHT — restore the interrupt flag so callers can react\ntry {\n    Thread.sleep(1000);\n} catch (InterruptedException e) {\n    Thread.currentThread().interrupt();   // re-assert the flag\n    throw new TaskCancelledException(\"Interrupted while sleeping\", e);\n}"
+      }
+    ]
+  },
+  {
+    "id": "unchecked",
+    "icon": "⚡",
+    "title": "Unchecked Exceptions",
+    "tagline": "Usually a bug in your code, not a condition to recover from",
+    "color": "#f59e0b",
+    "sections": [
+      {
+        "heading": "What makes an exception unchecked",
+        "body": "An unchecked exception is any subclass of RuntimeException (or Error). The compiler does not force you to catch or declare it. You can throw it from any method without touching the signature, and callers are free to ignore it.\n\nThis freedom exists for a reason: unchecked exceptions almost always signal a programming error — a broken assumption, a bug in the logic, a contract the caller violated. You cannot meaningfully recover from most of them because the correct fix is to change the code, not to handle the exception at runtime."
+      },
+      {
+        "heading": "The everyday unchecked exceptions",
+        "body": "// NullPointerException — you called a method on null\nString name = null;\nname.length();                          // 💥 NPE\n\n// IllegalArgumentException — a method got an argument it rejects\nList.of(1, 2, 3).subList(0, 10);        // 💥 out of bounds\n\n// IllegalStateException — the object isn't in a valid state for this call\nIterator<String> it = list.iterator();\nit.remove();                            // 💥 next() was never called\n\n// IndexOutOfBoundsException — bad index into an array or list\nint[] arr = {1, 2, 3};\nint x = arr[5];                         // 💥\n\n// ArithmeticException — illegal math\nint result = 10 / 0;                    // 💥 division by zero\n\n// NumberFormatException — a string that isn't a valid number\nInteger.parseInt(\"not-a-number\");       // 💥"
+      },
+      {
+        "heading": "Throwing unchecked exceptions to guard your code",
+        "body": "// Unchecked exceptions are the right tool for validating preconditions.\n// You throw them to fail fast when a caller breaks your method's contract.\n\npublic void transfer(Account from, Account to, BigDecimal amount) {\n    // Guard clauses — reject bad input immediately and loudly\n    if (from == null || to == null) {\n        throw new IllegalArgumentException(\"Accounts must not be null\");\n    }\n    if (amount.signum() <= 0) {\n        throw new IllegalArgumentException(\"Amount must be positive, got: \" + amount);\n    }\n    if (from.getBalance().compareTo(amount) < 0) {\n        throw new IllegalStateException(\"Insufficient funds in account \" + from.getId());\n    }\n\n    from.debit(amount);\n    to.credit(amount);\n}\n\n// Objects.requireNonNull is the idiomatic null guard:\npublic UserService(UserRepository repo) {\n    this.repo = Objects.requireNonNull(repo, \"repo must not be null\");\n}"
+      },
+      {
+        "heading": "Why you should almost never catch NullPointerException",
+        "body": "// ❌ WRONG — catching NPE hides the bug instead of fixing it\ntry {\n    processUser(user);\n} catch (NullPointerException e) {\n    // \"handled\" — but the real problem (user is null) is still there\n}\n\n// ✅ RIGHT — prevent the null in the first place\nif (user != null) {\n    processUser(user);\n}\n\n// ✅ BETTER — design the null away with Optional\nuserRepository.findById(id)\n    .ifPresent(this::processUser);\n\n// An unchecked exception in your logs is a to-do item for a developer,\n// not an event to be swallowed at runtime."
+      },
+      {
+        "heading": "Unchecked exceptions propagate silently",
+        "body": "// Because nothing declares them, unchecked exceptions travel all the way up\n// the call stack until something catches them — or the thread dies.\n\npublic int parse(String raw) {\n    return Integer.parseInt(raw);         // may throw NumberFormatException\n}\n\npublic int total(List<String> values) {\n    return values.stream()\n        .mapToInt(this::parse)            // no try/catch, no throws needed\n        .sum();\n}\n\n// If any value is malformed, the exception bubbles up through total()\n// with zero ceremony. This is powerful, but it means you must think\n// carefully about WHERE the top-level safety net lives — for a web app,\n// that's usually a global @ControllerAdvice handler."
+      }
+    ]
+  },
+  {
+    "id": "when-to-use",
+    "icon": "⚖️",
+    "title": "When to Use Each",
+    "tagline": "The decision framework senior engineers actually use",
+    "color": "#10b981",
+    "sections": [
+      {
+        "heading": "The core question",
+        "body": "For every failure you model, ask one question: Can the immediate caller reasonably be expected to recover from this?\n\nIf yes — the caller can retry, fall back, or take a meaningful alternative action — a checked exception makes that recovery a compile-time obligation. If no — the failure is a bug, or nothing can be done except report and abort — an unchecked exception keeps your code clean and lets the failure propagate to a central handler.\n\nThis is the rule the JLS and Effective Java both endorse: use checked exceptions for recoverable conditions, unchecked exceptions for programming errors."
+      },
+      {
+        "heading": "The decision tree",
+        "body": "Q1: Is this a bug — a broken precondition or invariant?\n     YES → UNCHECKED (IllegalArgumentException, IllegalStateException, NPE)\n     NO  → continue\n\nQ2: Can the caller do something useful about it (retry, fall back, ask the user)?\n     YES → CHECKED  (the compiler will make sure they consider it)\n     NO  → UNCHECKED (let it bubble to a global handler)\n\nQ3: Are you writing a modern framework-style API (like Spring)?\n     Prefer UNCHECKED — modern APIs favour unchecked to keep signatures clean\n     and to work smoothly with lambdas and streams.\n\n// When genuinely unsure, most modern Java leans UNCHECKED.\n// Checked exceptions are the deliberate exception, not the default."
+      },
+      {
+        "heading": "Concrete examples, side by side",
+        "body": "// RECOVERABLE → checked feels natural (though many teams still wrap it)\n// \"The config file might not exist yet on first run\"\npublic Config load() throws IOException { ... }\n\n// PROGRAMMING ERROR → always unchecked\n// \"This method requires a positive amount — a negative one is a caller bug\"\nif (amount < 0) throw new IllegalArgumentException(\"amount must be >= 0\");\n\n// BUSINESS RULE VIOLATION → unchecked domain exception (modern convention)\n// \"User tried to withdraw more than their balance\"\nif (balance < amount) throw new InsufficientFundsException(accountId);\n\n// NOT-FOUND that is EXPECTED → not an exception at all, use Optional\npublic Optional<User> findByEmail(String email) { ... }\n\n// NOT-FOUND that is a BUG or an error → unchecked exception\npublic User getById(Long id) {\n    return repo.findById(id)\n        .orElseThrow(() -> new UserNotFoundException(id));\n}"
+      },
+      {
+        "heading": "The modern trend: unchecked by default",
+        "body": "The industry has drifted decisively toward unchecked exceptions over the last two decades, and it's worth understanding why.\n\n- Checked exceptions don't compose with lambdas and streams. You cannot throw a checked exception from a Function or a Supplier without ugly wrapping, which makes them painful in functional-style code.\n\n- Checked exceptions leak across abstraction layers. A SQLException thrown from your repository forces your service and controller to know about JDBC — a violation of encapsulation.\n\n- They encourage bad handling. Under pressure, developers write empty catch blocks just to make the compiler happy, which is worse than no handling at all.\n\nSpring embraced this fully: it wraps every checked SQLException in an unchecked DataAccessException. That's why you almost never write throws in a Spring service."
+      },
+      {
+        "heading": "When checked exceptions still earn their place",
+        "body": "// Checked exceptions are not obsolete. Reach for them when ALL of these hold:\n\n// 1. The failure is genuinely recoverable by the immediate caller.\n// 2. Recovery requires a specific, deliberate action — not just logging.\n// 3. You want the compiler to guarantee the caller cannot forget.\n\n// Classic legitimate example: a payment gateway with retryable failures\npublic class PaymentDeclinedException extends Exception {\n    private final String reasonCode;\n    // The caller MUST decide: retry with another card, or cancel the order.\n    // Silently ignoring this would be a serious defect — so make it checked.\n}\n\n// Rule of thumb: if forgetting to handle it would be a costly mistake,\n// and handling it is a real option, checked exceptions add real value.\n// Otherwise, prefer unchecked."
+      }
+    ]
+  },
+  {
+    "id": "handling",
+    "icon": "🧯",
+    "title": "Handling Mechanics",
+    "tagline": "try, catch, finally, and try-with-resources done right",
+    "color": "#ec4899",
+    "sections": [
+      {
+        "heading": "The anatomy of try / catch / finally",
+        "body": "try {\n    // code that might throw\n    riskyOperation();\n} catch (SpecificException e) {\n    // runs only if SpecificException (or a subclass) was thrown\n    handleIt(e);\n} finally {\n    // ALWAYS runs — exception or not, return or not\n    cleanup();\n}\n\n// finally runs even if the try block returns, and even if the catch\n// block throws again. It is the guaranteed cleanup hook — but for\n// resources, try-with-resources (below) is almost always better."
+      },
+      {
+        "heading": "Catch the most specific exception first",
+        "body": "// Catch blocks are evaluated top to bottom. Order from specific to general,\n// or the broad catch will shadow the specific ones.\n\n// ❌ WRONG — Exception catches everything, FileNotFoundException is unreachable\ntry {\n    read();\n} catch (Exception e) {          // compile error: already caught above? no —\n    ...                          // this swallows FileNotFoundException too\n} catch (FileNotFoundException e) {\n    ...                          // unreachable\n}\n\n// ✅ RIGHT — narrowest type first\ntry {\n    read();\n} catch (FileNotFoundException e) {\n    createDefaultFile();         // specific, meaningful recovery\n} catch (IOException e) {\n    log.error(\"I/O failed\", e);  // broader fallback\n}"
+      },
+      {
+        "heading": "Multi-catch: one block, several types",
+        "body": "// When two exception types need identical handling, combine them with |\n// (Java 7+). This removes duplicated catch bodies.\n\ntry {\n    Class<?> clazz = Class.forName(className);\n    Object instance = clazz.getDeclaredConstructor().newInstance();\n} catch (ClassNotFoundException | NoSuchMethodException |\n         InstantiationException | IllegalAccessException e) {\n    throw new PluginLoadException(\"Could not load plugin: \" + className, e);\n}\n\n// The caught variable e is effectively final and typed as the closest\n// common supertype of the listed exceptions."
+      },
+      {
+        "heading": "try-with-resources: automatic cleanup",
+        "body": "// Any object implementing AutoCloseable can be declared in the try header.\n// It is closed automatically, in reverse order, even if an exception is thrown.\n\n// ❌ OLD WAY — verbose, error-prone, easy to leak\nBufferedReader reader = null;\ntry {\n    reader = new BufferedReader(new FileReader(\"data.txt\"));\n    return reader.readLine();\n} finally {\n    if (reader != null) reader.close();   // must remember; can itself throw\n}\n\n// ✅ MODERN WAY — the resource is closed for you, guaranteed\ntry (BufferedReader reader = new BufferedReader(new FileReader(\"data.txt\"))) {\n    return reader.readLine();\n}   // reader.close() is called automatically here\n\n// Multiple resources close in reverse declaration order:\ntry (Connection conn = dataSource.getConnection();\n     PreparedStatement ps = conn.prepareStatement(sql)) {\n    return ps.executeQuery();\n}"
+      },
+      {
+        "heading": "Wrap and re-throw to cross abstraction layers",
+        "body": "// A low-level exception should not leak into a high-level API.\n// Translate it into a meaningful exception for your layer — and ALWAYS\n// pass the original as the cause so the stack trace stays intact.\n\npublic User findUser(Long id) {\n    try {\n        return jdbcTemplate.queryForObject(SQL, userMapper, id);\n    } catch (SQLException e) {\n        // Don't leak SQLException to the service layer. Translate it.\n        throw new DataAccessException(\"Failed to load user \" + id, e);\n        //                                                          ^ keep the cause!\n    }\n}\n\n// ❌ throw new DataAccessException(\"Failed\");        // loses the root cause\n// ✅ throw new DataAccessException(\"Failed\", e);     // preserves the trail"
+      },
+      {
+        "heading": "The finally / return trap",
+        "body": "// A return inside finally overrides everything — even a thrown exception.\n// This is a notorious source of silently swallowed bugs. Never do it.\n\n// ❌ NEVER — the finally return eats the exception entirely\npublic int broken() {\n    try {\n        throw new RuntimeException(\"boom\");\n    } finally {\n        return 42;   // the exception vanishes; caller sees 42, no error\n    }\n}\n\n// Rule: finally is for CLEANUP only. Never return or throw from it."
+      }
+    ]
+  },
+  {
+    "id": "custom",
+    "icon": "🏗️",
+    "title": "Custom Exceptions",
+    "tagline": "Model your domain's failures as first-class types",
+    "color": "#8b5cf6",
+    "sections": [
+      {
+        "heading": "Why create your own exception types",
+        "body": "Generic exceptions like RuntimeException or IllegalStateException tell you that something failed, but not what failed in business terms. Custom exceptions make failures self-documenting: UserNotFoundException, InsufficientFundsException, and OrderAlreadyShippedException read like the domain they model.\n\nThey also let callers catch precisely what they care about, and they give a global handler clean hooks to map each failure to the right HTTP status. A well-designed exception type is part of your API's contract."
+      },
+      {
+        "heading": "A well-designed unchecked domain exception",
+        "body": "// Extend RuntimeException for a domain exception (the modern default).\npublic class UserNotFoundException extends RuntimeException {\n\n    private final Long userId;\n\n    public UserNotFoundException(Long userId) {\n        super(\"User not found with id: \" + userId);   // helpful message\n        this.userId = userId;                          // structured context\n    }\n\n    public Long getUserId() {\n        return userId;   // callers/handlers can use this without parsing the message\n    }\n}\n\n// Usage reads like the business rule it enforces:\nUser user = userRepository.findById(id)\n    .orElseThrow(() -> new UserNotFoundException(id));"
+      },
+      {
+        "heading": "Always provide constructors that accept a cause",
+        "body": "// A robust custom exception mirrors Throwable's constructors so it can\n// always wrap an underlying cause. Omitting the (String, Throwable) form\n// is a common mistake that leads to lost stack traces.\n\npublic class PaymentProcessingException extends RuntimeException {\n\n    public PaymentProcessingException(String message) {\n        super(message);\n    }\n\n    public PaymentProcessingException(String message, Throwable cause) {\n        super(message, cause);        // preserve the original failure\n    }\n\n    public PaymentProcessingException(Throwable cause) {\n        super(cause);\n    }\n}\n\n// Now you can wrap cleanly:\ntry {\n    gateway.charge(card, amount);\n} catch (GatewayTimeoutException e) {\n    throw new PaymentProcessingException(\"Charge failed for order \" + orderId, e);\n}"
+      },
+      {
+        "heading": "Building an exception hierarchy for your app",
+        "body": "// Give your application a common base exception. Callers can then catch\n// broadly (all domain errors) or narrowly (one specific case).\n\npublic abstract class DomainException extends RuntimeException {\n    protected DomainException(String message) { super(message); }\n    protected DomainException(String message, Throwable cause) { super(message, cause); }\n}\n\npublic class UserNotFoundException extends DomainException {\n    public UserNotFoundException(Long id) { super(\"User not found: \" + id); }\n}\n\npublic class DuplicateEmailException extends DomainException {\n    public DuplicateEmailException(String email) { super(\"Email already registered: \" + email); }\n}\n\n// A handler can now catch the whole family in one place:\n// catch (DomainException e) { ... map to a 4xx response ... }"
+      },
+      {
+        "heading": "Checked custom exception — when you truly need one",
+        "body": "// If (and only if) the caller MUST be forced to handle recovery,\n// extend Exception instead of RuntimeException.\n\npublic class QuotaExceededException extends Exception {\n\n    private final int retryAfterSeconds;\n\n    public QuotaExceededException(int retryAfterSeconds) {\n        super(\"Quota exceeded. Retry after \" + retryAfterSeconds + \"s\");\n        this.retryAfterSeconds = retryAfterSeconds;\n    }\n\n    public int getRetryAfterSeconds() { return retryAfterSeconds; }\n}\n\n// The checked type guarantees no caller can forget to decide:\n// wait and retry, or surface a 429 to the client.\npublic void submit(Job job) throws QuotaExceededException { ... }"
+      }
+    ]
+  },
+  {
+    "id": "best-practices",
+    "icon": "✅",
+    "title": "Best Practices & Anti-Patterns",
+    "tagline": "The habits that separate senior from mid",
+    "color": "#14b8a6",
+    "sections": [
+      {
+        "heading": "Never swallow exceptions",
+        "body": "// The single most damaging exception anti-pattern: an empty catch block.\n// It converts a loud, traceable failure into a silent, invisible bug.\n\n// ❌ CRIMINAL — the failure disappears without a trace\ntry {\n    updatePayment();\n} catch (Exception e) {\n    // nothing here\n}\n\n// ❌ BARELY BETTER — printStackTrace is not logging; it's noise on stderr\ntry {\n    updatePayment();\n} catch (Exception e) {\n    e.printStackTrace();\n}\n\n// ✅ RIGHT — log with context, then handle or re-throw\ntry {\n    updatePayment();\n} catch (PaymentException e) {\n    log.error(\"Payment update failed for order {}\", orderId, e);\n    throw new OrderProcessingException(\"Could not update payment\", e);\n}"
+      },
+      {
+        "heading": "Catch specific types, not Exception or Throwable",
+        "body": "// Catching Exception (or worse, Throwable) is a blunt instrument.\n// It hides bugs and can even swallow things you never meant to handle.\n\n// ❌ TOO BROAD — this also catches NPEs and other programming bugs,\n//    masking them as if they were expected I/O failures\ntry {\n    return readAndParse(file);\n} catch (Exception e) {\n    return defaultValue;\n}\n\n// ✅ PRECISE — handle only what you actually anticipate\ntry {\n    return readAndParse(file);\n} catch (IOException e) {\n    return defaultValue;         // expected: file might be unreadable\n}\n// A NullPointerException here would (correctly) propagate as the bug it is.\n\n// NEVER catch Throwable — it includes Error (OutOfMemoryError, etc.),\n// which you cannot and should not try to recover from."
+      },
+      {
+        "heading": "Fail fast: validate at the boundary",
+        "body": "// Detect bad state as early as possible, at the edge of your system,\n// with a clear unchecked exception. The deeper a bad value travels,\n// the harder the eventual failure is to diagnose.\n\npublic Order createOrder(OrderRequest req) {\n    Objects.requireNonNull(req, \"request must not be null\");\n    if (req.items().isEmpty()) {\n        throw new IllegalArgumentException(\"Order must contain at least one item\");\n    }\n    if (req.total().signum() <= 0) {\n        throw new IllegalArgumentException(\"Order total must be positive\");\n    }\n    // From here down, every downstream method can trust its inputs.\n    return orderRepository.save(Order.from(req));\n}"
+      },
+      {
+        "heading": "Write messages that help the person debugging at 3am",
+        "body": "// A good exception message includes WHAT failed and the RELEVANT VALUES.\n// You are writing for a stressed engineer reading a log, not a compiler.\n\n// ❌ USELESS\nthrow new IllegalArgumentException(\"Invalid input\");\nthrow new IllegalStateException(\"Error\");\n\n// ✅ ACTIONABLE — states the rule and the offending value\nthrow new IllegalArgumentException(\n    \"Discount must be between 0 and 100, but was: \" + discount);\n\nthrow new IllegalStateException(\n    \"Cannot ship order \" + orderId + \" in status \" + status +\n    \"; expected status PAID\");\n\n// Never put secrets (passwords, tokens, full card numbers) in a message —\n// exception messages end up in logs."
+      },
+      {
+        "heading": "Don't use exceptions for control flow",
+        "body": "// Exceptions are for exceptional conditions, not for normal branching.\n// They are expensive (stack trace capture) and obscure the logic.\n\n// ❌ WRONG — using an exception as an if/else\ntry {\n    return cache.get(key);         // throws if the key is absent\n} catch (NotFoundException e) {\n    return loadAndCache(key);\n}\n\n// ✅ RIGHT — check the normal case with a normal branch\nreturn cache.containsKey(key)\n    ? cache.get(key)\n    : loadAndCache(key);\n\n// If \"not found\" is an expected, routine outcome, model it with\n// Optional or a boolean — not with an exception."
+      },
+      {
+        "heading": "Clean up with try-with-resources, not finally",
+        "body": "// Prefer AutoCloseable + try-with-resources over manual finally cleanup.\n// It is shorter, cannot leak, and correctly handles the tricky case where\n// close() itself throws (it becomes a \"suppressed\" exception, not a lost one).\n\ntry (var conn = pool.getConnection();\n     var stmt = conn.prepareStatement(sql)) {\n    stmt.executeUpdate();\n}   // both closed automatically, in reverse order, no leaks\n\n// If close() throws while the body was also throwing, the body's exception\n// wins and close()'s is attached via getSuppressed() — nothing is lost."
+      }
+    ]
+  },
+  {
+    "id": "spring-boot",
+    "icon": "🌱",
+    "title": "Exceptions in Spring Boot",
+    "tagline": "How real APIs turn exceptions into clean HTTP responses",
+    "color": "#22c55e",
+    "sections": [
+      {
+        "heading": "Spring's philosophy: unchecked everywhere",
+        "body": "Spring made a deliberate architectural choice: it converts checked exceptions into unchecked ones so your business code stays clean. The most visible example is data access — every low-level, checked SQLException is caught by Spring and re-thrown as an unchecked DataAccessException.\n\nThis is why a typical Spring service method has no throws clause and no try/catch for database errors. You let unchecked exceptions propagate and handle them in exactly one place: a global exception handler. This keeps controllers and services focused on business logic, not error plumbing."
+      },
+      {
+        "heading": "The global handler: @RestControllerAdvice",
+        "body": "// One class handles errors for your entire application. Each @ExceptionHandler\n// maps an exception type to a consistent HTTP response.\n\n@RestControllerAdvice\npublic class GlobalExceptionHandler {\n\n    @ExceptionHandler(UserNotFoundException.class)\n    public ResponseEntity<ApiError> handleNotFound(UserNotFoundException e) {\n        var error = new ApiError(404, \"NOT_FOUND\", e.getMessage());\n        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);\n    }\n\n    @ExceptionHandler(IllegalArgumentException.class)\n    public ResponseEntity<ApiError> handleBadRequest(IllegalArgumentException e) {\n        var error = new ApiError(400, \"BAD_REQUEST\", e.getMessage());\n        return ResponseEntity.badRequest().body(error);\n    }\n\n    // Catch-all — never leak a stack trace to the client\n    @ExceptionHandler(Exception.class)\n    public ResponseEntity<ApiError> handleUnexpected(Exception e) {\n        log.error(\"Unexpected error\", e);\n        var error = new ApiError(500, \"INTERNAL_ERROR\", \"Something went wrong\");\n        return ResponseEntity.internalServerError().body(error);\n    }\n}"
+      },
+      {
+        "heading": "Let domain exceptions drive HTTP status",
+        "body": "// The clean flow: repository/service throws a meaningful domain exception,\n// the controller stays oblivious, and the advice maps it to a status code.\n\n@Service\npublic class UserService {\n    public UserDTO getById(Long id) {\n        return userRepository.findById(id)\n            .map(mapper::toDTO)\n            .orElseThrow(() -> new UserNotFoundException(id));   // just throw\n    }\n}\n\n@RestController\n@RequestMapping(\"/users\")\npublic class UserController {\n    @GetMapping(\"/{id}\")\n    public UserDTO get(@PathVariable Long id) {\n        return userService.getById(id);   // no try/catch — advice handles it\n    }\n}\n\n// The controller reads like the happy path. Error mapping lives in one place."
+      },
+      {
+        "heading": "@ResponseStatus — the lightweight shortcut",
+        "body": "// For simple cases you can annotate the exception itself, skipping the\n// handler method entirely. Spring reads the status when it propagates.\n\n@ResponseStatus(HttpStatus.NOT_FOUND)\npublic class UserNotFoundException extends RuntimeException {\n    public UserNotFoundException(Long id) {\n        super(\"User not found: \" + id);\n    }\n}\n\n// Or throw ResponseStatusException inline for one-off cases:\nthrow new ResponseStatusException(HttpStatus.NOT_FOUND, \"User not found: \" + id);\n\n// Use @RestControllerAdvice when you need a consistent error BODY;\n// use @ResponseStatus for quick status-only mapping."
+      },
+      {
+        "heading": "Validation exceptions and a consistent error body",
+        "body": "// @Valid on a DTO triggers MethodArgumentNotValidException on bad input.\n// Handle it once to return field-level errors in your standard shape.\n\n@ExceptionHandler(MethodArgumentNotValidException.class)\npublic ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException e) {\n    Map<String, String> fieldErrors = e.getBindingResult().getFieldErrors().stream()\n        .collect(Collectors.toMap(\n            FieldError::getField,\n            fe -> fe.getDefaultMessage() == null ? \"invalid\" : fe.getDefaultMessage(),\n            (a, b) -> a));\n\n    var error = new ApiError(400, \"VALIDATION_FAILED\", \"Request validation failed\");\n    error.setFieldErrors(fieldErrors);\n    return ResponseEntity.badRequest().body(error);\n}\n\n// Result: every client, for every endpoint, gets the SAME { status, code,\n// message, fieldErrors } contract — the hallmark of a well-built API."
+      }
+    ]
+  }
+]

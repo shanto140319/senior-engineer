@@ -12,6 +12,7 @@
 }
 
 .docs-title-gradient {
+  color: #e2e8f0;
   background: linear-gradient(135deg, #e2e8f0 0%, #a5b4fc 60%, #67e8f9 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -19,7 +20,8 @@
 }
 
 .docs-topic-title-gradient {
-  background: linear-gradient(90deg, var(--topic-color), #e2e8f0);
+  color: #e2e8f0;
+  background: linear-gradient(90deg, var(--topic-color, #a5b4fc), #e2e8f0);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

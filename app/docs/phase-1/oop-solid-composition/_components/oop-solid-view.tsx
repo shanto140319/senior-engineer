@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { DocHeader } from "@/app/docs/_components/doc-header";
 import { TopicDetail } from "@/app/docs/_components/topic-detail";
 import { TopicGrid } from "@/app/docs/_components/topic-grid";
+import { useRecordLastRead } from "@/app/docs/_components/use-record-last-read";
 import {
   oopSolidMeta,
   oopSolidTopics,
@@ -15,11 +16,20 @@ import { getRoadmapReturnHref } from "@/lib/docs/paths";
 import { topicColorStyle } from "@/lib/docs/styles";
 import { SolidQuickReference } from "./solid-quick-reference";
 
+function initialTopicId(topicParam: string | null): string | null {
+  if (!topicParam) return null;
+  return oopSolidTopics.some((topic) => topic.id === topicParam) ? topicParam : null;
+}
+
 export function OopSolidView() {
   const searchParams = useSearchParams();
   const roadmapHref = useMemo(() => getRoadmapReturnHref(searchParams), [searchParams]);
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const [activeTopicId, setActiveTopicId] = useState<string | null>(() =>
+    initialTopicId(searchParams.get("topic")),
+  );
   const activeTopic = oopSolidTopics.find((t) => t.id === activeTopicId) ?? null;
+
+  useRecordLastRead(oopSolidMeta, activeTopic);
 
   return (
     <>
